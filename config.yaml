@@ -1,0 +1,9 @@
+---
+probes:
+  - name: soeren
+    target: icmp://soeren-phone.dd.soeren.cloud
+
+mqtt:
+  broker: "tls://mqtt.svc.dd.soeren.cloud:8883"
+  default_topic: "dd/presence/%s"
+  client_id: presence_mac

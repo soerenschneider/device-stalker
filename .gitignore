@@ -1,0 +1,5 @@
+/.idea
+/builds
+/*.iml
+/device-stalker
+/coverage.*
