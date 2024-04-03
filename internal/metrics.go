@@ -25,6 +25,21 @@ var (
 		Name:      "start_time_seconds",
 	})
 
+	Heartbeat = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: namespace,
+		Name:      "heartbeat_seconds",
+	})
+
+	DeviceStatusPresent = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: namespace,
+		Name:      "device_present_bool",
+	}, []string{"name", "device"})
+
+	DeviceStatusChanges = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: namespace,
+		Name:      "device_status_changes_total",
+	}, []string{"name", "device"})
+
 	SampleErrors = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: namespace,
 		Subsystem: "sampler",
