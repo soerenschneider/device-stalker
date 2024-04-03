@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"sync"
 
+	"github.com/caarlos0/env/v10"
 	"github.com/go-playground/validator/v10"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v3"
@@ -20,13 +21,14 @@ var (
 )
 
 type Config struct {
-	IcmpSampler IcmpSamplerConfig `yaml:"pinger"`
-	TcpSampler  TcpSamplerConfig  `yaml:"tcp"`
+	IcmpSampler IcmpSamplerConfig `yaml:"pinger" envPrefix:"PINGER_"`
+	TcpSampler  TcpSamplerConfig  `yaml:"tcp" envPrefix:"TCP_"`
 
 	Devices []Device `yaml:"devices" validate:"required,dive"`
 
-	Mqtt        MqttConfig `yaml:"mqtt"`
-	MetricsAddr string     `yaml:"metrics_addr" validate:"tcp_addr"`
+	AlwaysSendNotification bool       `yaml:"always_send_notification" env:"ALWAYS_SEND_NOTIFICATION"`
+	Mqtt                   MqttConfig `yaml:"mqtt" envPrefix:"MQTT_"`
+	MetricsAddr            string     `yaml:"metrics_addr" env:"METRICS_ADDR" validate:"tcp_addr"`
 }
 
 type Device struct {
@@ -41,19 +43,20 @@ type TcpSamplerConfig struct {
 }
 
 type IcmpSamplerConfig struct {
-	UsePrivileged  bool `yaml:"use_privileged"`
-	Count          int  `yaml:"count" validate:"min=1,max=5"`
-	TimeoutSeconds int  `yaml:"timeout_s" validate:"min=1,max=5"`
+	UsePrivileged  bool `yaml:"use_privileged" env:"PRIVILEGED"`
+	Count          int  `yaml:"count" env:"COUNT" validate:"min=1,max=5"`
+	TimeoutSeconds int  `yaml:"timeout_s" env:"TIMEOUT_S" validate:"min=1,max=5"`
 }
 
 type MqttConfig struct {
-	Broker       string `yaml:"broker" validate:"broker"`
-	DefaultTopic string `yaml:"default_topic" validate:"required"`
-	ClientId     string `yaml:"client_id" validate:"required"`
+	Broker               string `yaml:"broker" env:"BROKER" validate:"broker"`
+	DefaultTopic         string `yaml:"default_topic" env:"DEFAULT_TOPIC" validate:"required"`
+	ClientId             string `yaml:"client_id" env:"CLIENT_ID" validate:"required"`
+	RandomClientIdSuffix bool   `yaml:"random_client_id_suffix" env:"CLIENT_ID_RAND_SUFFIX"`
 
-	CaCertFile     string `yaml:"tls_ca_cert" validate:"omitempty,file"`
-	ClientCertFile string `yaml:"tls_client_cert" validate:"omitempty,file"`
-	ClientKeyFile  string `yaml:"tls_client_key" validate:"omitempty,file"`
+	CaCertFile     string `yaml:"tls_ca_cert" env:"TLS_CA_CERT_FILE" validate:"omitempty,file"`
+	ClientCertFile string `yaml:"tls_client_cert" env:"TLS_CLIENT_CERT_FILE" validate:"omitempty,file"`
+	ClientKeyFile  string `yaml:"tls_client_key" env:"TLS_CLIENT_KEY_FILE" validate:"omitempty,file"`
 	TlsInsecure    bool   `yaml:"tls_insecure"`
 }
 
@@ -90,8 +93,18 @@ func ReadConfig(file string) (*Config, error) {
 	}
 
 	conf := defaultConfig()
-	err = yaml.Unmarshal(data, &conf)
-	return &conf, err
+	if err := yaml.Unmarshal(data, &conf); err != nil {
+		return nil, err
+	}
+
+	opts := env.Options{
+		Prefix: "DEVICE_STALKER_",
+	}
+	if err := env.ParseWithOptions(&conf, opts); err != nil {
+		return nil, err
+	}
+
+	return &conf, nil
 }
 
 func (conf *MqttConfig) UsesTlsClientCerts() bool {
@@ -114,11 +127,10 @@ func (conf *MqttConfig) TlsConfig() *tls.Config {
 		}
 	}
 
-	// #nosec G402
 	tlsConf := &tls.Config{
 		RootCAs:            certPool,
 		ClientAuth:         tls.RequestClientCert,
-		InsecureSkipVerify: conf.TlsInsecure,
+		InsecureSkipVerify: conf.TlsInsecure, // #nosec G402
 	}
 
 	clientCertDefined := len(conf.ClientCertFile) > 0
