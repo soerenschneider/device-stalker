@@ -51,7 +51,7 @@ type IcmpSamplerConfig struct {
 type MqttConfig struct {
 	Broker               string `yaml:"broker" env:"BROKER" validate:"broker"`
 	DefaultTopic         string `yaml:"default_topic" env:"DEFAULT_TOPIC" validate:"required"`
-	ClientId             string `yaml:"client_id" env:"CLIENT_ID" validate:"required"`
+	ClientId             string `yaml:"client_id" env:"CLIENT_ID"`
 	RandomClientIdSuffix bool   `yaml:"random_client_id_suffix" env:"CLIENT_ID_RAND_SUFFIX"`
 
 	CaCertFile     string `yaml:"tls_ca_cert" env:"TLS_CA_CERT_FILE" validate:"omitempty,file"`
