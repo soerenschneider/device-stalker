@@ -16,11 +16,11 @@ func buildNotifier(conf *internal.Config) (Notifier, error) {
 func buildMqttNotifier(conf *internal.Config) (*internal.MqttClientBus, error) {
 	clientId := conf.Mqtt.ClientId
 	if len(clientId) == 0 {
-		var err error
-		clientId, err = os.Hostname()
+		hostname, err := os.Hostname()
 		if err != nil {
 			return nil, fmt.Errorf("automatically setting mqtt clientId failed: %w", err)
 		}
+		clientId = fmt.Sprintf("%s-%s", AppName, hostname)
 	}
 
 	if conf.Mqtt.RandomClientIdSuffix {
@@ -47,6 +47,10 @@ func buildSamplers(conf *internal.Config) (map[string]Sampler, error) {
 	}
 
 	return ret, nil
+}
+
+func buildState(conf *internal.Config) (DeviceState, error) {
+	return internal.NewMapState()
 }
 
 func buildSampler(conf *internal.Config, probe internal.Device) (Sampler, error) {
