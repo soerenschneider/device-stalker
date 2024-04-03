@@ -79,6 +79,7 @@ func main() {
 	go func() {
 		internal.VersionMetric.WithLabelValues(BuildVersion, CommitHash).Set(1)
 		internal.ProcessStartTime.SetToCurrentTime()
+		internal.Heartbeat.SetToCurrentTime()
 		if err := internal.StartMetricsServer(conf.MetricsAddr); err != nil {
 			log.Fatal().Err(err).Msg("can not start metrics server")
 		}
@@ -107,6 +108,7 @@ func (app *App) run() {
 	for {
 		select {
 		case <-ticker.C:
+			internal.Heartbeat.SetToCurrentTime()
 			app.tick(ctx)
 		case <-ctx.Done():
 			return
@@ -130,8 +132,11 @@ func (app *App) tick(ctx context.Context) {
 			log.Info().Msgf("Probed %v=%t", prober.Device(), isPresent)
 			if err != nil {
 				log.Error().Err(err).Msgf("error probing %s", name)
-				if !sendPayloadOnError {
-					return
+			} else {
+				if isPresent {
+					internal.DeviceStatusPresent.WithLabelValues(name, prober.Device().Target).Set(1)
+				} else {
+					internal.DeviceStatusPresent.WithLabelValues(name, prober.Device().Target).Set(0)
 				}
 			}
 
