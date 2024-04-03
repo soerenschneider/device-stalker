@@ -10,8 +10,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/soerenschneider/device-stalker/internal"
+	"golang.org/x/term"
 )
 
 const (
@@ -25,6 +27,7 @@ var (
 	flagVersion    bool
 
 	sendPayloadOnError = true
+	flagDebug      bool
 
 	BuildVersion string
 	CommitHash   string
@@ -39,15 +42,21 @@ type Notifier interface {
 	Notify(ctx context.Context, probe internal.Device, val string) error
 }
 
+type DeviceState interface {
+	HasStateChanged(id string, newState bool) bool
+}
+
 type App struct {
 	samplers map[string]Sampler
 	notifier Notifier
+	state    DeviceState
+	config   *internal.Config
 }
 
 func main() {
 	parseFlags()
+	initLogging(flagDebug)
 
-	log.Info().Msgf("Starting version %s", BuildVersion)
 	conf, err := internal.ReadConfig(flagConfigFile)
 	if err != nil {
 		log.Fatal().Err(err).Msg("could not read config file")
@@ -141,6 +150,7 @@ func (app *App) tick(ctx context.Context) {
 func parseFlags() {
 	flag.StringVar(&flagConfigFile, "config", defaultConfigFile, "config file")
 	flag.BoolVar(&flagVersion, "version", false, "print version and exit")
+	flag.BoolVar(&flagDebug, "debug", false, "print debug logs")
 
 	flag.Parse()
 
@@ -148,4 +158,28 @@ func parseFlags() {
 		fmt.Println(BuildVersion)
 		os.Exit(0)
 	}
+}
+
+func initLogging(debug bool) {
+	if term.IsTerminal(int(os.Stdout.Fd())) {
+		log.Logger = log.Output(zerolog.ConsoleWriter{
+			Out:        os.Stderr,
+			TimeFormat: "15:04:05",
+		})
+	}
+
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	if debug {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	}
+
+	log.Info().Str("version", BuildVersion).Str("commit", CommitHash).Msgf("Started %s", AppName)
+}
+
+func translateOutcome(isPresent bool) string {
+	if isPresent {
+		return "ON"
+	}
+
+	return "OFF"
 }

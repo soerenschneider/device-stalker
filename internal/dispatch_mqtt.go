@@ -1,4 +1,4 @@
-package internal
+package dispatch
 
 import (
 	"context"
@@ -11,9 +11,12 @@ import (
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/rs/zerolog/log"
+	"github.com/soerenschneider/device-stalker/internal"
 )
 
-const defaultQos byte = 1
+const (
+	defaultQos byte = 1
+)
 
 var (
 	publishWaitTimeout = 5 * time.Second
@@ -56,7 +59,7 @@ func NewMqttClient(broker string, clientId, notificationTopic string, tlsConfig 
 	}, nil
 }
 
-func (d *MqttClientBus) Notify(_ context.Context, probe Device, val string) error {
+func (d *MqttClientBus) Notify(_ context.Context, probe internal.Device, val string) error {
 	topic := probe.Topic
 
 	if len(topic) == 0 {
@@ -67,7 +70,7 @@ func (d *MqttClientBus) Notify(_ context.Context, probe Device, val string) erro
 	token := d.client.Publish(topic, defaultQos, false, val)
 	ok := token.WaitTimeout(publishWaitTimeout)
 	if !ok {
-		NotificationErrors.Inc()
+		internal.NotificationErrors.Inc()
 		return errors.New("received timeout when trying to publish the message")
 	}
 
@@ -77,15 +80,15 @@ func (d *MqttClientBus) Notify(_ context.Context, probe Device, val string) erro
 func connectLostHandler(client mqtt.Client, err error) {
 	opts := client.OptionsReader()
 	log.Info().Msgf("Connection lost from %v: %v", opts.Servers(), err)
-	MqttConnectionsLostTotal.Inc()
+	internal.MqttConnectionsLostTotal.Inc()
 	mutex.Lock()
 	defer mutex.Unlock()
-	MqttBrokersConnectedTotal.Sub(1)
+	internal.MqttBrokersConnectedTotal.Sub(1)
 }
 
 func onReconnectHandler(_ mqtt.Client, opts *mqtt.ClientOptions) {
 	mutex.Lock()
-	MqttReconnectionsTotal.Inc()
+	internal.MqttReconnectionsTotal.Inc()
 	mutex.Unlock()
 	log.Info().Msgf("Reconnecting to %s", opts.Servers)
 }
@@ -99,6 +102,6 @@ var onConnectHandler = func(c mqtt.Client) {
 	opts := c.OptionsReader()
 	log.Info().Msgf("Connected to broker(s) %v", opts.Servers())
 	mutex.Lock()
-	MqttBrokersConnectedTotal.Add(1)
+	internal.MqttBrokersConnectedTotal.Add(1)
 	mutex.Unlock()
 }
