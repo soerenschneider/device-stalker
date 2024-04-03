@@ -13,7 +13,9 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const defaultQos byte = 1
+const (
+	defaultQos byte = 1
+)
 
 var (
 	publishWaitTimeout = 5 * time.Second
