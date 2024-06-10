@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/soerenschneider/device-stalker/compare/v1.0.0...v1.0.1) (2024-06-10)
+
+
+### Bug Fixes
+
+* **deps:** bump golang from 1.22.1 to 1.22.3 ([92b46df](https://github.com/soerenschneider/device-stalker/commit/92b46df016fa48c0a67190b8f8b5d37e5c012a2b))
+
 ## 1.0.0 (2024-04-03)
 
 
